@@ -1,422 +1,3 @@
-// import { useEffect, useRef, useState } from "react";
-// import {
-//   Bot,
-//   Send,
-//   User,
-//   Sparkles,
-//   AlertCircle,
-//   LoaderCircle,
-//   Trash2,
-// } from "lucide-react";
-
-// import DashboardLayout from "../components/DashboardLayout";
-// import { useEmployees } from "../context/EmployeeContext";
-
-// function Chat() {
-//   const { employeeList } = useEmployees();
-
-//   const [messages, setMessages] = useState(() => {
-//     const savedMessages = localStorage.getItem("chatMessages");
-
-//     return savedMessages
-//       ? JSON.parse(savedMessages)
-//       : [
-//           {
-//             id: 1,
-//             role: "assistant",
-//             content:
-//               "Hello! I'm your Employee AI Assistant. You can ask me about employees, departments, positions, or anything related to the employee directory.",
-//           },
-//         ];
-//   });
-
-//   const [input, setInput] = useState("");
-//   const [loading, setLoading] = useState(false);
-//   const [error, setError] = useState("");
-
-//   const [previousInteractionId, setPreviousInteractionId] = useState(() => {
-//     return localStorage.getItem("previousInteractionId") || "";
-//   });
-
-//   const messagesEndRef = useRef(null);
-
-//   // Save chat messages
-//   useEffect(() => {
-//     localStorage.setItem("chatMessages", JSON.stringify(messages));
-//   }, [messages]);
-
-//   // Save Gemini conversation ID
-//   useEffect(() => {
-//     if (previousInteractionId) {
-//       localStorage.setItem(
-//         "previousInteractionId",
-//         previousInteractionId
-//       );
-//     }
-//   }, [previousInteractionId]);
-
-//   // Scroll to latest message
-//   useEffect(() => {
-//     messagesEndRef.current?.scrollIntoView({
-//       behavior: "smooth",
-//     });
-//   }, [messages, loading]);
-
-//   const addMessage = (role, content) => {
-//     setMessages((previous) => [
-//       ...previous,
-//       {
-//         id: Date.now() + Math.random(),
-//         role,
-//         content,
-//       },
-//     ]);
-//   };
-
-//   // Handle questions that can be answered directly from employee data
-//   const getEmployeeAnswer = (question) => {
-//     const text = question.toLowerCase().trim();
-
-//     // Total employees
-//     if (
-//       text.includes("how many employees") ||
-//       text.includes("total employees") ||
-//       text.includes("number of employees")
-//     ) {
-//       return `There are ${employeeList.length} employees in the company.`;
-//     }
-
-//     // Department count
-//     if (
-//       text.includes("how many departments") ||
-//       text.includes("total departments")
-//     ) {
-//       const departments = [
-//         ...new Set(
-//           employeeList.map((employee) => employee.department)
-//         ),
-//       ];
-
-//       return `There are ${departments.length} departments in the company.`;
-//     }
-
-//     // Employees in a department
-//     const department = employeeList.find((employee) => {
-//       return text.includes(employee.department.toLowerCase());
-//     });
-
-//     if (
-//       department &&
-//       (text.includes("how many") ||
-//         text.includes("who works") ||
-//         text.includes("employees in"))
-//     ) {
-//       const departmentEmployees = employeeList.filter(
-//         (employee) =>
-//           employee.department.toLowerCase() ===
-//           department.department.toLowerCase()
-//       );
-
-//       if (text.includes("how many")) {
-//         return `There are ${departmentEmployees.length} employees in ${department.department}.`;
-//       }
-
-//       if (text.includes("who works")) {
-//         const names = departmentEmployees
-//           .map((employee) => employee.name)
-//           .join(", ");
-
-//         return `Employees in ${department.department}: ${names}.`;
-//       }
-//     }
-
-//     // Show all employees
-//     if (
-//       text.includes("show all employees") ||
-//       text.includes("list all employees") ||
-//       text.includes("all employees")
-//     ) {
-//       if (employeeList.length === 0) {
-//         return "There are currently no employees in the directory.";
-//       }
-
-//       return employeeList
-//         .map(
-//           (employee, index) =>
-//             `${index + 1}. ${employee.name} — ${employee.position} (${employee.department})`
-//         )
-//         .join("\n");
-//     }
-
-//     return null;
-//   };
-
-//   const sendMessage = async (customMessage) => {
-//     const userMessage = (customMessage ?? input).trim();
-
-//     if (!userMessage || loading) {
-//       return;
-//     }
-
-//     setInput("");
-//     setError("");
-
-//     addMessage("user", userMessage);
-//     setLoading(true);
-
-//     // First try to answer from actual employee data
-//     const employeeAnswer = getEmployeeAnswer(userMessage);
-
-//     if (employeeAnswer) {
-//       setTimeout(() => {
-//         addMessage("assistant", employeeAnswer);
-//         setLoading(false);
-//       }, 500);
-
-//       return;
-//     }
-
-//     try {
-//       const response = await fetch("http://localhost:5000/api/chat", {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//         },
-//         body: JSON.stringify({
-//           message: userMessage,
-//           previousInteractionId,
-//           employees: employeeList,
-//         }),
-//       });
-
-//       const data = await response.json();
-
-//       if (!response.ok) {
-//         throw new Error(
-//           data.error || "Unable to get response from AI."
-//         );
-//       }
-
-//       addMessage(
-//         "assistant",
-//         data.response || "I couldn't generate a response."
-//       );
-
-//       if (data.interactionId) {
-//         setPreviousInteractionId(data.interactionId);
-//       }
-//     } catch (err) {
-//       console.error("Chat error:", err);
-
-//       setError(
-//         err.message ||
-//           "Something went wrong while contacting the AI."
-//       );
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleSubmit = (e) => {
-//     e.preventDefault();
-//     sendMessage();
-//   };
-
-//   const clearChat = () => {
-//     const confirmed = window.confirm(
-//       "Are you sure you want to clear the chat?"
-//     );
-
-//     if (!confirmed) return;
-
-//     const welcomeMessage = {
-//       id: Date.now(),
-//       role: "assistant",
-//       content:
-//         "Hello! I'm your Employee AI Assistant. You can ask me about employees, departments, positions, or anything related to the employee directory.",
-//     };
-
-//     setMessages([welcomeMessage]);
-//     setPreviousInteractionId("");
-//     setError("");
-
-//     localStorage.removeItem("chatMessages");
-//     localStorage.removeItem("previousInteractionId");
-//   };
-
-//   const suggestedPrompts = [
-//     "How many employees are there?",
-//     "How many departments are there?",
-//     "Who works in Engineering?",
-//     "Show all employees",
-//   ];
-
-//   return (
-//     <DashboardLayout title="AI Assistant">
-//       <div className="mx-auto flex h-[calc(100vh-8rem)] max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-
-//         {/* Header */}
-//         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6 dark:border-slate-700">
-//           <div className="flex items-center gap-3">
-//             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-//               <Bot size={22} />
-//             </div>
-
-//             <div>
-//               <h2 className="font-semibold text-slate-900 dark:text-white">
-//                 Employee AI Assistant
-//               </h2>
-
-//               <p className="text-xs text-slate-500 dark:text-slate-400">
-//                 Ask questions about your employees
-//               </p>
-//             </div>
-//           </div>
-
-//           <button
-//             type="button"
-//             onClick={clearChat}
-//             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-//           >
-//             <Trash2 size={17} />
-
-//             <span className="hidden sm:inline">
-//               Clear Chat
-//             </span>
-//           </button>
-//         </div>
-
-//         {/* Messages */}
-//         <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
-
-//           {messages.map((message) => {
-//             const isUser = message.role === "user";
-
-//             return (
-//               <div
-//                 key={message.id}
-//                 className={`flex gap-3 ${
-//                   isUser ? "justify-end" : "justify-start"
-//                 }`}
-//               >
-//                 {!isUser && (
-//                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-//                     <Bot size={18} />
-//                   </div>
-//                 )}
-
-//                 <div
-//                   className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-3 text-sm leading-6 sm:max-w-[70%] ${
-//                     isUser
-//                       ? "rounded-br-md bg-indigo-600 text-white"
-//                       : "rounded-bl-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-//                   }`}
-//                 >
-//                   {message.content}
-//                 </div>
-
-//                 {isUser && (
-//                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-//                     <User size={18} />
-//                   </div>
-//                 )}
-//               </div>
-//             );
-//           })}
-
-//           {/* Loading */}
-//           {loading && (
-//             <div className="flex items-center gap-3">
-//               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-//                 <Bot size={18} />
-//               </div>
-
-//               <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 dark:bg-slate-800">
-//                 <LoaderCircle
-//                   size={17}
-//                   className="animate-spin"
-//                 />
-
-//                 <span className="text-sm text-slate-500 dark:text-slate-400">
-//                   Thinking...
-//                 </span>
-//               </div>
-//             </div>
-//           )}
-
-//           <div ref={messagesEndRef} />
-//         </div>
-
-//         {/* Error */}
-//         {error && (
-//           <div className="mx-4 mb-3 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 sm:mx-6 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
-//             <AlertCircle size={18} className="mt-0.5 shrink-0" />
-
-//             <div>
-//               <p className="font-medium">
-//                 Something went wrong
-//               </p>
-
-//               <p className="mt-1">
-//                 {error}
-//               </p>
-//             </div>
-//           </div>
-//         )}
-
-//         {/* Suggested Prompts */}
-//         <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-700">
-//           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-//             <Sparkles size={14} />
-//             Suggested questions
-//           </div>
-
-//           <div className="flex gap-2 overflow-x-auto pb-1">
-//             {suggestedPrompts.map((prompt) => (
-//               <button
-//                 key={prompt}
-//                 type="button"
-//                 onClick={() => sendMessage(prompt)}
-//                 disabled={loading}
-//                 className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400"
-//               >
-//                 {prompt}
-//               </button>
-//             ))}
-//           </div>
-//         </div>
-
-//         {/* Input */}
-//         <form
-//           onSubmit={handleSubmit}
-//           className="border-t border-slate-200 p-4 dark:border-slate-700 sm:p-5"
-//         >
-//           <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:focus-within:ring-indigo-500/20">
-//             <input
-//               type="text"
-//               value={input}
-//               onChange={(e) => setInput(e.target.value)}
-//               placeholder="Ask about employees..."
-//               disabled={loading}
-//               className="min-w-0 flex-1 bg-transparent px-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-white"
-//             />
-
-//             <button
-//               type="submit"
-//               disabled={!input.trim() || loading}
-//               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-//             >
-//               <Send size={18} />
-//             </button>
-//           </div>
-//         </form>
-//       </div>
-//     </DashboardLayout>
-//   );
-// }
-
-// export default Chat;
-
 import { useEffect, useRef, useState } from "react";
 import {
   Bot,
@@ -435,16 +16,22 @@ function Chat() {
   const [messages, setMessages] = useState(() => {
     const savedMessages = localStorage.getItem("chatMessages");
 
-    return savedMessages
-      ? JSON.parse(savedMessages)
-      : [
-          {
-            id: 1,
-            role: "assistant",
-            content:
-              "Hello! I'm your Employee AI Assistant. You can ask me about employees, departments, positions, or the employee directory.",
-          },
-        ];
+    if (savedMessages) {
+      try {
+        return JSON.parse(savedMessages);
+      } catch {
+        return [];
+      }
+    }
+
+    return [
+      {
+        id: 1,
+        role: "assistant",
+        content:
+          "Hello! I'm your Employee AI Assistant. You can ask me about employees, departments, positions, or the employee directory.",
+      },
+    ];
   });
 
   const [input, setInput] = useState("");
@@ -454,7 +41,10 @@ function Chat() {
 
   // Save chat history
   useEffect(() => {
-    localStorage.setItem("chatMessages", JSON.stringify(messages));
+    localStorage.setItem(
+      "chatMessages",
+      JSON.stringify(messages)
+    );
   }, [messages]);
 
   // Scroll to latest message
@@ -464,6 +54,7 @@ function Chat() {
     });
   }, [messages, loading]);
 
+  // Add message
   const addMessage = (role, content) => {
     setMessages((previous) => [
       ...previous,
@@ -475,13 +66,13 @@ function Chat() {
     ]);
   };
 
-  // Employee-related questions
+  // Get employee-related answer
   const getEmployeeAnswer = (question) => {
     const text = question.toLowerCase().trim();
 
-    // -------------------------------
+    // --------------------------------
     // Total Employees
-    // -------------------------------
+    // --------------------------------
 
     if (
       text.includes("how many employees") ||
@@ -492,9 +83,9 @@ function Chat() {
       return `There are ${employeeList.length} employees in the company.`;
     }
 
-    // -------------------------------
+    // --------------------------------
     // Total Departments
-    // -------------------------------
+    // --------------------------------
 
     if (
       text.includes("how many departments") ||
@@ -503,16 +94,18 @@ function Chat() {
     ) {
       const departments = [
         ...new Set(
-          employeeList.map((employee) => employee.department)
+          employeeList.map(
+            (employee) => employee.department
+          )
         ),
       ];
 
       return `There are ${departments.length} departments in the company.`;
     }
 
-    // -------------------------------
+    // --------------------------------
     // List Departments
-    // -------------------------------
+    // --------------------------------
 
     if (
       text.includes("list departments") ||
@@ -521,7 +114,9 @@ function Chat() {
     ) {
       const departments = [
         ...new Set(
-          employeeList.map((employee) => employee.department)
+          employeeList.map(
+            (employee) => employee.department
+          )
         ),
       ];
 
@@ -530,13 +125,16 @@ function Chat() {
       }
 
       return `Departments:\n${departments
-        .map((department, index) => `${index + 1}. ${department}`)
+        .map(
+          (department, index) =>
+            `${index + 1}. ${department}`
+        )
         .join("\n")}`;
     }
 
-    // -------------------------------
-    // Find Department
-    // -------------------------------
+    // --------------------------------
+    // Department Questions
+    // --------------------------------
 
     const department = employeeList.find((employee) =>
       text.includes(employee.department.toLowerCase())
@@ -555,17 +153,19 @@ function Chat() {
           department.department.toLowerCase()
       );
 
-      // How many employees?
       if (text.includes("how many")) {
         return `There are ${departmentEmployees.length} employees in ${department.department}.`;
       }
 
-      // Who works there?
       if (
         text.includes("who works") ||
         text.includes("employees in") ||
         text.includes("people in")
       ) {
+        if (departmentEmployees.length === 0) {
+          return `There are no employees in ${department.department}.`;
+        }
+
         const names = departmentEmployees
           .map((employee) => employee.name)
           .join(", ");
@@ -574,9 +174,9 @@ function Chat() {
       }
     }
 
-    // -------------------------------
+    // --------------------------------
     // Show All Employees
-    // -------------------------------
+    // --------------------------------
 
     if (
       text.includes("show all employees") ||
@@ -596,9 +196,9 @@ function Chat() {
         .join("\n");
     }
 
-    // -------------------------------
-    // Find Employee by Name
-    // -------------------------------
+    // --------------------------------
+    // Employee Name Search
+    // --------------------------------
 
     const employeeByName = employeeList.find((employee) =>
       text.includes(employee.name.toLowerCase())
@@ -627,12 +227,12 @@ function Chat() {
         return `${employeeByName.name} works in the ${employeeByName.department} department.`;
       }
 
-      return `${employeeByName.name} works as ${employeeByName.position} in the ${employeeByName.department} department. Email: ${employeeByName.email}`;
+      return `${employeeByName.name} works as ${employeeByName.position} in the ${employeeByName.department} department.\nEmail: ${employeeByName.email}`;
     }
 
-    // -------------------------------
-    // Find Employee by Position
-    // -------------------------------
+    // --------------------------------
+    // Position Search
+    // --------------------------------
 
     const employeeByPosition = employeeList.find((employee) =>
       text.includes(employee.position.toLowerCase())
@@ -658,27 +258,31 @@ function Chat() {
 
   // Send message
   const sendMessage = (customMessage) => {
-    const userMessage = (customMessage ?? input).trim();
+    const userMessage = (
+      customMessage ?? input
+    ).trim();
 
     if (!userMessage || loading) {
       return;
     }
 
     setInput("");
-
     addMessage("user", userMessage);
     setLoading(true);
 
-    // Get answer from employee data
-    const employeeAnswer = getEmployeeAnswer(userMessage);
+    const employeeAnswer =
+      getEmployeeAnswer(userMessage);
 
     setTimeout(() => {
       if (employeeAnswer) {
-        addMessage("assistant", employeeAnswer);
+        addMessage(
+          "assistant",
+          employeeAnswer
+        );
       } else {
         addMessage(
           "assistant",
-          "I can currently help with employee directory questions such as employee count, departments, employee names, positions, and emails. Try asking something like \"How many employees are there?\""
+          "I can currently help with employee directory questions such as employee count, departments, employee names, positions, and emails. Try asking: \"How many employees are there?\""
         );
       }
 
@@ -686,6 +290,7 @@ function Chat() {
     }, 500);
   };
 
+  // Submit message
   const handleSubmit = (e) => {
     e.preventDefault();
     sendMessage();
@@ -697,7 +302,9 @@ function Chat() {
       "Are you sure you want to clear the chat?"
     );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     const welcomeMessage = {
       id: Date.now(),
@@ -707,10 +314,16 @@ function Chat() {
     };
 
     setMessages([welcomeMessage]);
+    setInput("");
 
-    localStorage.removeItem("chatMessages");
+    // Immediately update localStorage
+    localStorage.setItem(
+      "chatMessages",
+      JSON.stringify([welcomeMessage])
+    );
   };
 
+  // Suggested prompts
   const suggestedPrompts = [
     "How many employees are there?",
     "How many departments are there?",
@@ -755,9 +368,9 @@ function Chat() {
 
         {/* Messages */}
         <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
-
           {messages.map((message) => {
-            const isUser = message.role === "user";
+            const isUser =
+              message.role === "user";
 
             return (
               <div
@@ -803,7 +416,9 @@ function Chat() {
               <div className="rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 dark:bg-slate-800">
                 <div className="flex items-center gap-1">
                   <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
+
                   <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:150ms]" />
+
                   <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:300ms]" />
                 </div>
               </div>
@@ -821,17 +436,21 @@ function Chat() {
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {suggestedPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                onClick={() => sendMessage(prompt)}
-                disabled={loading}
-                className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400"
-              >
-                {prompt}
-              </button>
-            ))}
+            {suggestedPrompts.map(
+              (prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() =>
+                    sendMessage(prompt)
+                  }
+                  disabled={loading}
+                  className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400"
+                >
+                  {prompt}
+                </button>
+              )
+            )}
           </div>
         </div>
 
@@ -844,7 +463,9 @@ function Chat() {
             <input
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) =>
+                setInput(e.target.value)
+              }
               placeholder="Ask about employees..."
               disabled={loading}
               className="min-w-0 flex-1 bg-transparent px-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-white"
@@ -852,7 +473,9 @@ function Chat() {
 
             <button
               type="submit"
-              disabled={!input.trim() || loading}
+              disabled={
+                !input.trim() || loading
+              }
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send size={18} />
