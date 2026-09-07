@@ -5,6 +5,7 @@ import {
   User,
   Sparkles,
   Trash2,
+  X,
 } from "lucide-react";
 
 import DashboardLayout from "../components/DashboardLayout";
@@ -20,7 +21,14 @@ function Chat() {
       try {
         return JSON.parse(savedMessages);
       } catch {
-        return [];
+        return [
+          {
+            id: 1,
+            role: "assistant",
+            content:
+              "Hello! I'm your Employee AI Assistant. You can ask me about employees, departments, positions, or the employee directory.",
+          },
+        ];
       }
     }
 
@@ -36,6 +44,9 @@ function Chat() {
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Custom clear chat modal
+  const [showClearModal, setShowClearModal] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -137,7 +148,9 @@ function Chat() {
     // --------------------------------
 
     const department = employeeList.find((employee) =>
-      text.includes(employee.department.toLowerCase())
+      text.includes(
+        employee.department.toLowerCase()
+      )
     );
 
     if (
@@ -296,16 +309,18 @@ function Chat() {
     sendMessage();
   };
 
+  // Open clear modal
+  const openClearModal = () => {
+    setShowClearModal(true);
+  };
+
+  // Close clear modal
+  const closeClearModal = () => {
+    setShowClearModal(false);
+  };
+
   // Clear chat
   const clearChat = () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to clear the chat?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     const welcomeMessage = {
       id: Date.now(),
       role: "assistant",
@@ -315,8 +330,9 @@ function Chat() {
 
     setMessages([welcomeMessage]);
     setInput("");
+    setLoading(false);
+    setShowClearModal(false);
 
-    // Immediately update localStorage
     localStorage.setItem(
       "chatMessages",
       JSON.stringify([welcomeMessage])
@@ -353,9 +369,10 @@ function Chat() {
             </div>
           </div>
 
+          {/* Clear Chat Button */}
           <button
             type="button"
-            onClick={clearChat}
+            onClick={openClearModal}
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
           >
             <Trash2 size={17} />
@@ -483,6 +500,68 @@ function Chat() {
           </div>
         </form>
       </div>
+
+      {/* Clear Chat Modal */}
+      {showClearModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+          onClick={closeClearModal}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400">
+                  <Trash2 size={21} />
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Clear chat?
+                  </h3>
+
+                  <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">
+                    Are you sure you want to clear all your chat messages?
+                    This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+
+              {/* Close Icon */}
+              <button
+                type="button"
+                onClick={closeClearModal}
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                aria-label="Close modal"
+              >
+                <X size={19} />
+              </button>
+            </div>
+
+            {/* Modal Buttons */}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeClearModal}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={clearChat}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700"
+              >
+                Clear Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
